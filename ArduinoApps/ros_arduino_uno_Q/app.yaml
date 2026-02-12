@@ -1,0 +1,18 @@
+# app.yaml: The main configuration file for your Arduino App.
+# This file describes the application's metadata and properties.
+
+# The user-visible name of the application.
+name: ros_arduino_uno_Q
+
+# A brief description of what the application does.
+description: "ROS 2 Jazzy running in a container on the Arduino UNO Q to control the onboard LED via an RPC bridge between the Qualcomm MPU (Linux) and the STM32 microcontroller. A ROS 2 node subscribes to a boolean topic and triggers an RPC call to the MCU, enabling end-to-end ROS-native LED control on the UNO Q."
+
+# The icon for the application, can be an emoji or a short string.
+icon: 🦾
+
+# A list of network ports that the application exposes.
+# Example: [80, 443]
+ports: []
+
+# A list of bricks used by this application.
+bricks: []

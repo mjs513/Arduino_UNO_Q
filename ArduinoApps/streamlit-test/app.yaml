@@ -1,0 +1,6 @@
+name: Streamlit Test
+description: ""
+ports: []
+bricks:
+- arduino:streamlit_ui: {}
+icon: 😀

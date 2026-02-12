@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>ros_led</name>
+  <version>1.0.0</version>
+  <description>ROS 2 Jazzy running in a container on the Arduino UNO Q to control the onboard LED via an RPC bridge between the Qualcomm MPU (Linux) and the STM32 microcontroller. A ROS 2 node subscribes to a boolean topic and triggers an RPC call to the MCU, enabling end-to-end ROS-native LED control on the UNO Q.</description>
+  <maintainer email="miguel_gonzalezr@ieee.org">Miguel Angel Gonzalez Rodriguez</maintainer>
+  <license>BSD 3-Clause</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

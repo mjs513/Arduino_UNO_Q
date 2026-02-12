@@ -1,0 +1,29 @@
+profiles:
+  default:
+    fqbn: 
+    platforms:
+      - platform: arduino:zephyr
+    libraries:
+      - MsgPack (0.4.2)
+      - DebugLog (0.8.4)
+      - ArxContainer (0.7.0)
+      - ArxTypeTraits (0.3.1)
+      - dir: /home/arduino/libraries/Adafruit-ST7735-Library
+      - dependency: Adafruit BusIO (1.17.4)
+      - Adafruit GFX Library (1.12.4)
+      - Adafruit FT6206 Library (1.1.0)
+      - dependency: Adafruit ILI9341 (1.6.2)
+      - dependency: Adafruit SH110X (2.1.14)
+      - dependency: Adafruit STMPE610 (1.1.6)
+      - dependency: Adafruit TSC2007 (1.1.2)
+      - dependency: Adafruit TouchScreen (1.1.6)
+      - dependency: ArduinoGraphics (1.1.4)
+      - dependency: Arduino_HS300x (1.0.0)
+      - dependency: Arduino_LPS22HB (1.0.2)
+      - dependency: Arduino_LSM6DSOX (1.1.2)
+      - dependency: Arduino_LTR381RGB (1.0.0)
+      - Arduino_Modulino (0.7.0)
+      - dependency: STM32duino VL53L4CD (1.0.5)
+      - dependency: STM32duino VL53L4ED (1.0.1)
+
+default_profile: default

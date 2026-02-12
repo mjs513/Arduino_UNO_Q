@@ -1,0 +1,23 @@
+profiles:
+  default:
+    fqbn: arduino:zephyr:unoq
+    platforms:
+      - platform: arduino:zephyr
+    libraries:
+      - MsgPack (0.4.2)
+      - DebugLog (0.8.4)
+      - ArxContainer (0.7.0)
+      - ArxTypeTraits (0.3.1)
+      - dir: /home/arduino/libraries/Adafruit-ST7735-Library
+      - dir: /home/arduino/libraries/BitBang_I2C
+      - dependency: Adafruit BusIO (1.17.4)
+      - Adafruit GFX Library (1.12.4)
+      - FT6236G (1.0.0)
+      - Adafruit FT6206 Library (1.1.0)
+      - dependency: Adafruit ILI9341 (1.6.2)
+      - dependency: Adafruit SH110X (2.1.14)
+      - dependency: Adafruit STMPE610 (1.1.6)
+      - dependency: Adafruit TSC2007 (1.1.2)
+      - dependency: Adafruit TouchScreen (1.1.6)
+
+default_profile: default
