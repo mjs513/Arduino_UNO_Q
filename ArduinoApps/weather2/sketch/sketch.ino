@@ -19,12 +19,21 @@ String city = "Los Angeles";
 
 // Create a ModulinoButtons object
 ModulinoButtons buttons;
+#define THREAD_STACK_SIZE    1024
+#define THREAD_PRIORITY      7
 
-bool button_a = true;
-bool button_b = true;
-bool button_c = true;
+K_THREAD_STACK_DEFINE(btn_stack_area, THREAD_STACK_SIZE);
+K_MUTEX_DEFINE(btn_mutex);
+
+k_tid_t btn_tid;
+struct k_thread btn_thread_data{};
+
+
+volatile bool button_a = true;
+volatile bool button_b = true;
+volatile bool button_c = true;
 bool buttons_found = false;
-
+volatile uint8_t buttons_changed = 0;
 // Also try a Qwiic button
 #include <SparkFun_Qwiic_Button.h>
 QwiicButton qbutton;
@@ -52,20 +61,32 @@ void setup() {
   Monitor.begin();
 
   // Initialize Modulino I2C communication
+  Wire1.begin();
   Modulino.begin(Wire1);
   // Detect and connect to buttons module
   printk("After Modulino begin\n");
   buttons_found = buttons.begin();
   // Turn on the LEDs above buttons A, B, and C
   printk("After buttons begin %u\n", buttons_found);
-  if (buttons_found) buttons.setLeds(true, true, true);
+  if (buttons_found) {
+    buttons.setLeds(true, true, true);
+
+    // lets create a thread to monitor the buttons
+    btn_tid = k_thread_create(&btn_thread_data, btn_stack_area,
+                            K_THREAD_STACK_SIZEOF(btn_stack_area),
+                            btnScanEntryPoint,
+                            NULL, NULL, NULL,
+                            THREAD_PRIORITY, 0, K_NO_WAIT);
+    k_thread_name_set(btn_tid, "btn_scan");
+
+    
+    
+  }
 
   qbutton_found = qbutton.begin(SFE_QWIIC_BUTTON_DEFAULT_ADDRESS, Wire1);
   printk("QButton begin: %u\n", qbutton_found);
   if (qbutton_found && button_a) qbutton.LEDon(64);
 }
-
-
 
 
 /* make global so I can decide not to call through bridge every call */
@@ -77,34 +98,36 @@ uint32_t last_forcast_time = (uint32_t)-1;
 #define TIME_BETWEEN_CALLS_MS (5 * 60000) /* 5 minutes */
 
 void loop() {
-  if (buttons.update()) {
-    // You can use either index (0=A, 1=B, 2=C) or letter ('A', 'B', 'C') to check buttons
-    // Below we use the letter-based method for better readability
+  // Modulino buttons updated in thread
+  k_mutex_lock(&btn_mutex, K_FOREVER);
 
-    if (buttons.isPressed('A')) {
-      Serial.println("Button A pressed!");
-      button_a = !button_a;
-    } else if (buttons.isPressed("B")) {
-      Serial.println("Button B pressed!");
-      button_b = !button_b;
-    } else if (buttons.isPressed('C')) {
-      Serial.println("Button C pressed!");
-      button_c = !button_c;
+
+  if (qbutton_found) {
+    if (qbutton.hasBeenClicked()) {
+        button_a = !button_a;
+        printk("QButton pressed: %u\n", button_a);
+        if (button_a) qbutton.LEDon(64);
+        else qbutton.LEDoff();
+        qbutton.clearEventBits();
+        buttons_changed = 1;
+    } else if (buttons_changed & 1) {
+        // can be cleaner 
+        if (button_a) qbutton.LEDon(64);
+        else qbutton.LEDoff();
     }
-
-    // Update the LEDs above buttons, depending on the variables value
+  }
+  
+  // Update the LEDs above buttons, depending on the variables value
+  if (buttons_changed) {
     buttons.setLeds(button_a, button_b, button_c);
-  }
+    buttons_changed = 0;
+  } 
 
-  if (qbutton_found && qbutton.hasBeenClicked()) {
-      button_a = !button_a;
-      printk("QButton pressed: %u\n", button_a);
-      if (button_a) qbutton.LEDon(64);
-      else qbutton.LEDoff();
-      qbutton.clearEventBits();
-  }
-
+  k_mutex_unlock(&btn_mutex);
+  
+  
   if ((last_forcast_time == (uint32_t)-1) || ((millis() - last_forcast_time) > TIME_BETWEEN_CALLS_MS)) {
+    last_forcast_time = millis();
     bool ok = Bridge.call("get_weather_forecast", city).result(weather_forecast);
     if (!ok) {
       delay(5000);
@@ -214,4 +237,34 @@ void display_string(const char* buffer) {
   }
 
   matrix.endDraw();
+}
+
+
+void btnScanEntryPoint(void *p1, void *p2, void *p3) {
+  UNUSED(p1);
+  UNUSED(p2);
+  UNUSED(p3);
+  while (true) {
+    k_mutex_lock(&btn_mutex, K_FOREVER);
+    if (buttons.update()) {
+    // You can use either index (0=A, 1=B, 2=C) or letter ('A', 'B', 'C') to check buttons
+    // Below we use the letter-based method for better readability
+      if (buttons.isPressed('A')) {
+        //Serial.println("Button A pressed!");
+        button_a = !button_a;
+        buttons_changed |= 1;
+      } else if (buttons.isPressed("B")) {
+        //Serial.println("Button B pressed!");
+        button_b = !button_b;
+        buttons_changed |= 2;
+      } else if (buttons.isPressed('C')) {
+        //Serial.println("Button C pressed!");
+        button_c = !button_c;
+        buttons_changed |= 4;
+      }
+
+    }
+    k_mutex_unlock(&btn_mutex);
+    k_msleep(250);
+  }
 }
