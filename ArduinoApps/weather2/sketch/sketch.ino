@@ -11,15 +11,19 @@
 #include <Arduino_Modulino.h>
 #include "weather_frames.h"
 
-#if __has_include(".location.h")
-#include ".location.h";
+#if defined __has_include
+#if __has_include ("location.h")
+#include "location.h"
 #else
 String city = "Los Angeles";
+#endif
+#else
+#warning "__has_include not defined"
 #endif
 
 // Create a ModulinoButtons object
 ModulinoButtons buttons;
-#define THREAD_STACK_SIZE    1024
+#define THREAD_STACK_SIZE    500
 #define THREAD_PRIORITY      7
 
 K_THREAD_STACK_DEFINE(btn_stack_area, THREAD_STACK_SIZE);
@@ -50,24 +54,25 @@ enum { TEMP = 0,
        PRECIP,
        SPEED,
        DIR };
-void setup() {
 
+void setup() {
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.begin(115200); // just in case we print here
   matrix.begin();
   matrix.textFont(Font_5x7);
   matrix.textSize(1, 1);
   matrix.stroke(127, 127, 127);
   matrix.clear();
-  Bridge.begin();
-  Monitor.begin();
 
   // Initialize Modulino I2C communication
   Wire1.begin();
   Modulino.begin(Wire1);
   // Detect and connect to buttons module
-  printk("After Modulino begin\n");
+  //printk("After Modulino begin\n");
   buttons_found = buttons.begin();
-  // Turn on the LEDs above buttons A, B, and C
-  printk("After buttons begin %u\n", buttons_found);
+
+  k_mutex_init(&btn_mutex);
+  //printk("After buttons begin %u\n", buttons_found);
   if (buttons_found) {
     buttons.setLeds(true, true, true);
 
@@ -84,28 +89,36 @@ void setup() {
   }
 
   qbutton_found = qbutton.begin(SFE_QWIIC_BUTTON_DEFAULT_ADDRESS, Wire1);
-  printk("QButton begin: %u\n", qbutton_found);
+  //printk("QButton begin: %u\n", qbutton_found);
   if (qbutton_found && button_a) qbutton.LEDon(64);
+
+  digitalWrite(LED_BUILTIN, HIGH);
+  delay(2000);
+  Bridge.begin();
+  Monitor.begin();
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 
 /* make global so I can decide not to call through bridge every call */
 
-String weather_forecast;
+String weather_forecast = "";
 std::vector<float> cur_weather_data;
 
 uint32_t last_forcast_time = (uint32_t)-1;
-#define TIME_BETWEEN_CALLS_MS (5 * 60000) /* 5 minutes */
+#define TIME_BETWEEN_CALLS_MS (1 * 60000) /* 1 minutes */
 
 void loop() {
   // Modulino buttons updated in thread
+  //printk("Loop");
   k_mutex_lock(&btn_mutex, K_FOREVER);
-
+  //printk(" lock");
+  digitalWrite(LED_BUILTIN, HIGH);
 
   if (qbutton_found) {
     if (qbutton.hasBeenClicked()) {
         button_a = !button_a;
-        printk("QButton pressed: %u\n", button_a);
+        //printk("QButton pressed: %u\n", button_a);
         if (button_a) qbutton.LEDon(64);
         else qbutton.LEDoff();
         qbutton.clearEventBits();
@@ -124,22 +137,27 @@ void loop() {
   } 
 
   k_mutex_unlock(&btn_mutex);
+  //printk(" unlock");
   
-  
+  char buffer[80];
   if ((last_forcast_time == (uint32_t)-1) || ((millis() - last_forcast_time) > TIME_BETWEEN_CALLS_MS)) {
-    last_forcast_time = millis();
+    //printk(" Bridge");
     bool ok = Bridge.call("get_weather_forecast", city).result(weather_forecast);
     if (!ok) {
+      printk("Failed to get weather forecast\n");
       delay(5000);
       Monitor.println("Failed to get_weather_forecast");
       return;
     }
-    Bridge.call("get_weather_data").result(cur_weather_data);
+    if (!Bridge.call("get_weather_data").result(cur_weather_data)) {
+      printk("Failed to get weather data\n");
+      return;
+    }
+    sprintf(buffer, "%f.1 %f.1 %f.1 %f,1 ", cur_weather_data[TEMP], cur_weather_data[PRECIP], cur_weather_data[SPEED], cur_weather_data[DIR]);
+    Monitor.print(buffer);
+    last_forcast_time = millis();
   }
-  char buffer[80];
-  sprintf(buffer, "%f.1 %f.1 %f.1 %f,1 ", cur_weather_data[TEMP], cur_weather_data[PRECIP], cur_weather_data[SPEED], cur_weather_data[DIR]);
-  Monitor.print(buffer);
-
+  //printk("\n");
   if (weather_forecast == "sunny") {
     matrix.loadSequence(sunny);
     playRepeat(5);
